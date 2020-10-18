@@ -1,0 +1,75 @@
+{
+    "configurations": [
+        {
+            "name": "!!! WARNING !!! AUTO-GENERATED FILE, PLEASE DO NOT MODIFY IT AND USE https://docs.platformio.org/page/projectconf/section_env_build.html#build-flags"
+        },
+        {
+            "name": "Win32",
+            "includePath": [
+                "c:/Dev/MegaRelay/include",
+                "c:/Dev/MegaRelay/src",
+                "c:/Dev/MegaRelay/.pio/libdeps/megaatmega2560/MQTT/src",
+                "c:/Dev/MegaRelay/.pio/libdeps/megaatmega2560/PubSubClient/src",
+                "c:/Dev/MegaRelay/.pio/libdeps/megaatmega2560/Ethernet/src",
+                "C:/Users/Markus/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
+                "C:/Users/Markus/.platformio/packages/framework-arduino-avr/cores/arduino",
+                "C:/Users/Markus/.platformio/packages/framework-arduino-avr/variants/mega",
+                "C:/Users/Markus/.platformio/lib/Adafruit NeoPixel_ID28",
+                "C:/Users/Markus/.platformio/lib/ArduinoJson-esphomelib_ID3837/src",
+                "C:/Users/Markus/.platformio/lib/ESP32 BLE Keyboard_ID6749",
+                "C:/Users/Markus/.platformio/lib/FastLED_ID126",
+                "C:/Users/Markus/.platformio/lib/RCSwitch_ID246",
+                "C:/Users/Markus/.platformio/lib/esphome-core_ID2096/src",
+                "C:/Users/Markus/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
+                "C:/Users/Markus/.platformio/packages/framework-arduino-avr/libraries/HID/src",
+                "C:/Users/Markus/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
+                "C:/Users/Markus/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
+                "C:/Users/Markus/.platformio/packages/tool-unity",
+                ""
+            ],
+            "browse": {
+                "limitSymbolsToIncludedHeaders": true,
+                "path": [
+                    "c:/Dev/MegaRelay/include",
+                    "c:/Dev/MegaRelay/src",
+                    "c:/Dev/MegaRelay/.pio/libdeps/megaatmega2560/MQTT/src",
+                    "c:/Dev/MegaRelay/.pio/libdeps/megaatmega2560/PubSubClient/src",
+                    "c:/Dev/MegaRelay/.pio/libdeps/megaatmega2560/Ethernet/src",
+                    "C:/Users/Markus/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
+                    "C:/Users/Markus/.platformio/packages/framework-arduino-avr/cores/arduino",
+                    "C:/Users/Markus/.platformio/packages/framework-arduino-avr/variants/mega",
+                    "C:/Users/Markus/.platformio/lib/Adafruit NeoPixel_ID28",
+                    "C:/Users/Markus/.platformio/lib/ArduinoJson-esphomelib_ID3837/src",
+                    "C:/Users/Markus/.platformio/lib/ESP32 BLE Keyboard_ID6749",
+                    "C:/Users/Markus/.platformio/lib/FastLED_ID126",
+                    "C:/Users/Markus/.platformio/lib/RCSwitch_ID246",
+                    "C:/Users/Markus/.platformio/lib/esphome-core_ID2096/src",
+                    "C:/Users/Markus/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
+                    "C:/Users/Markus/.platformio/packages/framework-arduino-avr/libraries/HID/src",
+                    "C:/Users/Markus/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
+                    "C:/Users/Markus/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
+                    "C:/Users/Markus/.platformio/packages/tool-unity",
+                    ""
+                ]
+            },
+            "defines": [
+                "PLATFORMIO=50001",
+                "ARDUINO_AVR_MEGA2560",
+                "F_CPU=16000000L",
+                "ARDUINO_ARCH_AVR",
+                "ARDUINO=10808",
+                "__AVR_ATmega2560__",
+                ""
+            ],
+            "intelliSenseMode": "clang-x64",
+            "cStandard": "c11",
+            "cppStandard": "c++11",
+            "compilerPath": "C:/Users/Markus/.platformio/packages/toolchain-atmelavr/bin/avr-gcc.exe",
+            "compilerArgs": [
+                "-mmcu=atmega2560",
+                ""
+            ]
+        }
+    ],
+    "version": 4
+}

@@ -35,7 +35,7 @@ Other shields and boards should also work if they provide a [Client](https://www
 
 ## Example
 
-The following example uses an Arduino MKR1000 to connect to shiftr.io. You can check on your device after a successful connection here: https://shiftr.io/try.
+The following example uses an Arduino MKR1000 to connect to the public shiftr.io instance. You can check on your device after a successful connection here: https://www.shiftr.io/try.
 
 ```c++
 #include <SPI.h>
@@ -58,7 +58,7 @@ void connect() {
   }
 
   Serial.print("\nconnecting...");
-  while (!client.connect("arduino", "try", "try")) {
+  while (!client.connect("arduino", "public", "public")) {
     Serial.print(".");
     delay(1000);
   }
@@ -71,15 +71,20 @@ void connect() {
 
 void messageReceived(String &topic, String &payload) {
   Serial.println("incoming: " + topic + " - " + payload);
+
+  // Note: Do not use the client in the callback to publish, subscribe or
+  // unsubscribe as it may cause deadlocks when other things arrive while
+  // sending and receiving acknowledgments. Instead, change a global variable,
+  // or push to a queue and handle it in the loop after calling `client.loop()`.
 }
 
 void setup() {
   Serial.begin(115200);
   WiFi.begin(ssid, pass);
 
-  // Note: Local domain names (e.g. "Computer.local" on OSX) are not supported by Arduino.
-  // You need to set the IP address directly.
-  client.begin("broker.shiftr.io", net);
+  // Note: Local domain names (e.g. "Computer.local" on OSX) are not supported
+  // by Arduino. You need to set the IP address directly.
+  client.begin("public.cloud.shiftr.io", net);
   client.onMessage(messageReceived);
 
   connect();
@@ -105,8 +110,11 @@ void loop() {
 Initialize the object using the hostname of the broker, the brokers port (default: `1883`) and the underlying Client class for network transport:
 
 ```c++
+void begin(Client &client);
 void begin(const char hostname[], Client &client);
 void begin(const char hostname[], int port, Client &client);
+void begin(IPAddress address, Client &client);
+void begin(IPAddress address, int port, Client &client);
 ```
 
 - Specify port `8883` when using secure clients for encrypted connections.
@@ -117,6 +125,8 @@ The hostname and port can also be changed after calling `begin()`:
 ```c++
 void setHost(const char hostname[]);
 void setHost(const char hostname[], int port);
+void setHost(IPAddress address);
+void setHost(IPAddress address, int port);
 ```
 
 Set a will message (last testament) that gets registered on the broker after connecting. `setWill()` has to be called before calling `connect()`:
@@ -134,16 +144,26 @@ Register a callback to receive messages:
 void onMessage(MQTTClientCallbackSimple);
 // Callback signature: void messageReceived(String &topic, String &payload) {}
 
+void onMessage(MQTTClientCallbackSimpleFunction cb);
+// Callback signature: std::function<void(String &topic, String &payload)>
+
 void onMessageAdvanced(MQTTClientCallbackAdvanced);
-// Callback signature: void messageReceived(MQTTClient *client, char topic[], char payload[], int payload_length) {}
+// Callback signature: void messageReceived(MQTTClient *client, char topic[], char bytes[], int length) {}
+
+void onMessageAdvanced(MQTTClientCallbackAdvancedFunction cb);
+// Callback signature: std::function<void(MQTTClient *client, char topic[], char bytes[], int length)>
 ```
 
 - The set callback is mostly called during a call to `loop()` but may also be called during a call to `subscribe()`, `unsubscribe()` or `publish() // QoS > 0` if messages have been received before receiving the required acknowledgement. Therefore, it is strongly recommended to not call `subscribe()`, `unsubscribe()` or `publish() // QoS > 0` directly in the callback.
-- In case you need a reference to an object that manages the client, use the `void * ref` property on the client to store a pointer, and access it directly from the advanced callback..
+- In case you need a reference to an object that manages the client, use the `void * ref` property on the client to store a pointer, and access it directly from the advanced callback.
+- If the platform supports `<functional>` you can directly register a function wrapper.
 
 Set more advanced options:
 
 ```c++
+void setKeepAlive(int keepAlive);
+void setCleanSession(bool cleanSession);
+void setTimeout(int timeout);
 void setOptions(int keepAlive, bool cleanSession, int timeout);
 ```
 
@@ -163,13 +183,13 @@ void setClockSource(MQTTClientClockSource);
 Connect to broker using the supplied client id and an optional username and password:
 
 ```c++
-bool connect(const char clientId[], bool skip = false);
-bool connect(const char clientId[], const char username[], bool skip = false);
-bool connect(const char clientId[], const char username[], const char password[], bool skip = false);
+bool connect(const char clientID[], bool skip = false);
+bool connect(const char clientID[], const char username[], bool skip = false);
+bool connect(const char clientID[], const char username[], const char password[], bool skip = false);
 ```
 
 - If the `skip` option is set to true, the client will skip the network level connection and jump to the MQTT level connection. This option can be used in order to establish and verify TLS connections manually before giving control to the MQTT client. 
-- This functions returns a boolean that indicates if the connection has been established successfully.
+- The functions return a boolean that indicates if the connection has been established successfully (true).
 
 Publishes a message to the broker with an optional payload:
 
@@ -186,6 +206,8 @@ bool publish(const char topic[], const char payload[], int length);
 bool publish(const char topic[], const char payload[], int length, bool retained, int qos);
 ```
 
+- The functions return a boolean that indicates if the publish has been successful (true).
+
 Subscribe to a topic:
 
 ```c++
@@ -195,12 +217,16 @@ bool subscribe(const char topic[]);
 bool subscribe(const char topic[], int qos);
 ```
 
+- The functions return a boolean that indicates if the subscribe has been successful (true).
+
 Unsubscribe from a topic:
 
 ```c++
 bool unsubscribe(const String &topic);
 bool unsubscribe(const char topic[]);
 ```
+
+- The functions return a boolean that indicates if the unsubscribe has been successful (true).
 
 Sends and receives packets:
 
@@ -209,6 +235,7 @@ bool loop();
 ```
 
 - This function should be called in every `loop`.
+- The function returns a boolean that indicates if the loop has been successful (true).
 
 Check if the client is currently connected:
 
@@ -223,14 +250,16 @@ lwmqtt_err_t lastError();
 lwmqtt_return_code_t returnCode();
 ```
 
-- The error codes can be found [here](https://github.com/256dpi/lwmqtt/blob/master/include/lwmqtt.h#L11).
-- The return codes can be found [here](https://github.com/256dpi/lwmqtt/blob/master/include/lwmqtt.h#L243).
+- The error codes can be found [here](https://github.com/256dpi/lwmqtt/blob/master/include/lwmqtt.h#L15).
+- The return codes can be found [here](https://github.com/256dpi/lwmqtt/blob/master/include/lwmqtt.h#L260).
 
 Disconnect from the broker:
 
 ```c++
 bool disconnect();
 ```
+
+- The function returns a boolean that indicates if the disconnect has been successful (true).
 
 ## Release Management
 

@@ -4,11 +4,14 @@ inline void lwmqtt_arduino_timer_set(void *ref, uint32_t timeout) {
   // cast timer reference
   auto t = (lwmqtt_arduino_timer_t *)ref;
 
-  // set future end time
+  // set timeout
+  t->timeout = timeout;
+
+  // set start
   if (t->millis != nullptr) {
-    t->end = (uint32_t)(t->millis() + timeout);
+    t->start = t->millis();
   } else {
-    t->end = (uint32_t)(millis() + timeout);
+    t->start = millis();
   }
 }
 
@@ -16,11 +19,27 @@ inline int32_t lwmqtt_arduino_timer_get(void *ref) {
   // cast timer reference
   auto t = (lwmqtt_arduino_timer_t *)ref;
 
-  // get difference to end time
+  // get now
+  uint32_t now;
   if (t->millis != nullptr) {
-    return (int32_t)(t->end - t->millis());
+    now = t->millis();
   } else {
-    return (int32_t)(t->end - millis());
+    now = millis();
+  }
+
+  // get difference (account for roll-overs)
+  uint32_t diff;
+  if (now < t->start) {
+    diff = UINT32_MAX - t->start + now;
+  } else {
+    diff = now - t->start;
+  }
+
+  // return relative time
+  if (diff > t->timeout) {
+    return -(diff - t->timeout);
+  } else {
+    return t->timeout - diff;
   }
 }
 
@@ -48,7 +67,8 @@ inline lwmqtt_err_t lwmqtt_arduino_network_read(void *ref, uint8_t *buffer, size
       continue;
     }
 
-    // wait/unblock for some time (RTOS based boards may otherwise fail since the wifi task cannot provide the data)
+    // wait/unblock for some time (RTOS based boards may otherwise fail since
+    // the wifi task cannot provide the data)
     delay(0);
 
     // otherwise check status
@@ -74,7 +94,7 @@ inline lwmqtt_err_t lwmqtt_arduino_network_write(void *ref, uint8_t *buffer, siz
   *sent = n->client->write(buffer, len);
   if (*sent <= 0) {
     return LWMQTT_NETWORK_FAILED_WRITE;
-  };
+  }
 
   return LWMQTT_SUCCESS;
 }
@@ -99,11 +119,23 @@ static void MQTTClientHandler(lwmqtt_client_t * /*client*/, void *ref, lwmqtt_st
     cb->advanced(cb->client, terminated_topic, (char *)message.payload, (int)message.payload_len);
     return;
   }
+#if MQTT_HAS_FUNCTIONAL
+  if (cb->functionAdvanced != nullptr) {
+    cb->functionAdvanced(cb->client, terminated_topic, (char *)message.payload, (int)message.payload_len);
+    return;
+  }
+#endif
 
   // return if simple callback is not set
+#if MQTT_HAS_FUNCTIONAL
+  if (cb->simple == nullptr && cb->functionSimple == nullptr) {
+    return;
+  }
+#else
   if (cb->simple == nullptr) {
     return;
   }
+#endif
 
   // create topic string
   String str_topic = String(terminated_topic);
@@ -115,13 +147,18 @@ static void MQTTClientHandler(lwmqtt_client_t * /*client*/, void *ref, lwmqtt_st
   }
 
   // call simple callback
+#if MQTT_HAS_FUNCTIONAL
+  if (cb->functionSimple != nullptr) {
+    cb->functionSimple(str_topic, str_payload);
+  } else {
+    cb->simple(str_topic, str_payload);
+  }
+#else
   cb->simple(str_topic, str_payload);
+#endif
 }
 
 MQTTClient::MQTTClient(int bufSize) {
-  // reset client
-  memset(&this->client, 0, sizeof(lwmqtt_client_t));
-
   // allocate buffers
   this->bufSize = (size_t)bufSize;
   this->readBuf = (uint8_t *)malloc((size_t)bufSize + 1);
@@ -142,12 +179,9 @@ MQTTClient::~MQTTClient() {
   free(this->writeBuf);
 }
 
-void MQTTClient::begin(const char hostname[], int port, Client &client) {
-  // set hostname and port
-  this->setHost(hostname, port);
-
+void MQTTClient::begin(Client &_client) {
   // set client
-  this->netClient = &client;
+  this->netClient = &_client;
 
   // initialize client
   lwmqtt_init(&this->client, this->writeBuf, this->bufSize, this->readBuf, this->bufSize);
@@ -167,6 +201,10 @@ void MQTTClient::onMessage(MQTTClientCallbackSimple cb) {
   this->callback.client = this;
   this->callback.simple = cb;
   this->callback.advanced = nullptr;
+#if MQTT_HAS_FUNCTIONAL
+  this->callback.functionSimple = nullptr;
+  this->callback.functionAdvanced = nullptr;
+#endif
 }
 
 void MQTTClient::onMessageAdvanced(MQTTClientCallbackAdvanced cb) {
@@ -174,22 +212,52 @@ void MQTTClient::onMessageAdvanced(MQTTClientCallbackAdvanced cb) {
   this->callback.client = this;
   this->callback.simple = nullptr;
   this->callback.advanced = cb;
+#if MQTT_HAS_FUNCTIONAL
+  this->callback.functionSimple = nullptr;
+  this->callback.functionAdvanced = nullptr;
+#endif
 }
+
+#if MQTT_HAS_FUNCTIONAL
+void MQTTClient::onMessage(MQTTClientCallbackSimpleFunction cb) {
+  // set callback
+  this->callback.client = this;
+  this->callback.simple = nullptr;
+  this->callback.functionSimple = cb;
+  this->callback.advanced = nullptr;
+  this->callback.functionAdvanced = nullptr;
+}
+
+void MQTTClient::onMessageAdvanced(MQTTClientCallbackAdvancedFunction cb) {
+  // set callback
+  this->callback.client = this;
+  this->callback.simple = nullptr;
+  this->callback.functionSimple = nullptr;
+  this->callback.advanced = nullptr;
+  this->callback.functionAdvanced = cb;
+}
+#endif
 
 void MQTTClient::setClockSource(MQTTClientClockSource cb) {
   this->timer1.millis = cb;
   this->timer2.millis = cb;
 }
 
-void MQTTClient::setHost(const char hostname[], int port) {
+void MQTTClient::setHost(IPAddress _address, int _port) {
+  // set address and port
+  this->address = _address;
+  this->port = _port;
+}
+
+void MQTTClient::setHost(const char _hostname[], int _port) {
   // free hostname if set
   if (this->hostname != nullptr) {
     free((void *)this->hostname);
   }
 
   // set hostname and port
-  this->hostname = strdup(hostname);
-  this->port = port;
+  this->hostname = strdup(_hostname);
+  this->port = _port;
 }
 
 void MQTTClient::setWill(const char topic[], const char payload[], bool retained, int qos) {
@@ -239,12 +307,11 @@ void MQTTClient::clearWill() {
   this->will = nullptr;
 }
 
-void MQTTClient::setOptions(int keepAlive, bool cleanSession, int timeout) {
-  // set new options
-  this->keepAlive = (uint16_t)keepAlive;
-  this->cleanSession = cleanSession;
-  this->timeout = (uint32_t)timeout;
-}
+void MQTTClient::setKeepAlive(int _keepAlive) { this->keepAlive = _keepAlive; }
+
+void MQTTClient::setCleanSession(bool _cleanSession) { this->cleanSession = _cleanSession; }
+
+void MQTTClient::setTimeout(int _timeout) { this->timeout = _timeout; }
 
 bool MQTTClient::publish(const char topic[], const char payload[], int length, bool retained, int qos) {
   // return immediately if not connected
@@ -271,7 +338,7 @@ bool MQTTClient::publish(const char topic[], const char payload[], int length, b
   return true;
 }
 
-bool MQTTClient::connect(const char clientId[], const char username[], const char password[], bool skip) {
+bool MQTTClient::connect(const char clientID[], const char username[], const char password[], bool skip) {
   // close left open connection if still connected
   if (!skip && this->connected()) {
     this->close();
@@ -282,7 +349,12 @@ bool MQTTClient::connect(const char clientId[], const char username[], const cha
 
   // connect to host
   if (!skip) {
-    int ret = this->netClient->connect(this->hostname, (uint16_t)this->port);
+    int ret;
+    if (this->hostname != nullptr) {
+      ret = this->netClient->connect(this->hostname, (uint16_t)this->port);
+    } else {
+      ret = this->netClient->connect(this->address, (uint16_t)this->port);
+    }
     if (ret <= 0) {
       this->_lastError = LWMQTT_NETWORK_FAILED_CONNECT;
       return false;
@@ -293,7 +365,7 @@ bool MQTTClient::connect(const char clientId[], const char username[], const cha
   lwmqtt_options_t options = lwmqtt_default_options;
   options.keep_alive = this->keepAlive;
   options.clean_session = this->cleanSession;
-  options.client_id = lwmqtt_string(clientId);
+  options.client_id = lwmqtt_string(clientID);
 
   // set username and password if available
   if (username != nullptr) {

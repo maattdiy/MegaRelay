@@ -2,7 +2,7 @@
 // an Ethernet Shield to connect to shiftr.io.
 //
 // You can check on your device after a successful
-// connection here: https://shiftr.io/try.
+// connection here: https://www.shiftr.io/try.
 //
 // by Joël Gähwiler
 // https://github.com/256dpi/arduino-mqtt
@@ -20,7 +20,7 @@ unsigned long lastMillis = 0;
 
 void connect() {
   Serial.print("connecting...");
-  while (!client.connect("arduino", "try", "try")) {
+  while (!client.connect("arduino", "public", "public")) {
     Serial.print(".");
     delay(1000);
   }
@@ -33,15 +33,20 @@ void connect() {
 
 void messageReceived(String &topic, String &payload) {
   Serial.println("incoming: " + topic + " - " + payload);
+
+  // Note: Do not use the client in the callback to publish, subscribe or
+  // unsubscribe as it may cause deadlocks when other things arrive while
+  // sending and receiving acknowledgments. Instead, change a global variable,
+  // or push to a queue and handle it in the loop after calling `client.loop()`.
 }
 
 void setup() {
   Serial.begin(115200);
   Ethernet.begin(mac, ip);
 
-  // Note: Local domain names (e.g. "Computer.local" on OSX) are not supported by Arduino.
-  // You need to set the IP address directly.
-  client.begin("broker.shiftr.io", net);
+  // Note: Local domain names (e.g. "Computer.local" on OSX) are not supported
+  // by Arduino. You need to set the IP address directly.
+  client.begin("public.cloud.shiftr.io", net);
   client.onMessage(messageReceived);
 
   connect();

@@ -4,7 +4,7 @@
 // IMPORTANT: This example uses the new WiFi101 library.
 //
 // You can check on your device after a successful
-// connection here: https://shiftr.io/try.
+// connection here: https://www.shiftr.io/try.
 //
 // by Gilberto Conti
 // https://github.com/256dpi/arduino-mqtt
@@ -28,7 +28,7 @@ void connect() {
   }
 
   Serial.print("\nconnecting...");
-  while (!client.connect("arduino", "try", "try")) {
+  while (!client.connect("arduino", "public", "public")) {
     Serial.print(".");
     delay(1000);
   }
@@ -41,15 +41,20 @@ void connect() {
 
 void messageReceived(String &topic, String &payload) {
   Serial.println("incoming: " + topic + " - " + payload);
+
+  // Note: Do not use the client in the callback to publish, subscribe or
+  // unsubscribe as it may cause deadlocks when other things arrive while
+  // sending and receiving acknowledgments. Instead, change a global variable,
+  // or push to a queue and handle it in the loop after calling `client.loop()`.
 }
 
 void setup() {
   Serial.begin(115200);
   WiFi.begin(ssid, pass);
 
-  // Note: Local domain names (e.g. "Computer.local" on OSX) are not supported by Arduino.
-  // You need to set the IP address directly.
-  client.begin("broker.shiftr.io", net);
+  // Note: Local domain names (e.g. "Computer.local" on OSX) are not supported
+  // by Arduino. You need to set the IP address directly.
+  client.begin("public.cloud.shiftr.io", net);
   client.onMessage(messageReceived);
 
   connect();

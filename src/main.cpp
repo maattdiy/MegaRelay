@@ -29,7 +29,7 @@ MQTTClient client;
 
 const int RELAYS_MAX = 16;
 
-int relayPin[RELAYS_MAX + 1] = {0, 23, 22, 25, 24, 27, 26, 29, 28, 31, 30, 33, 32, 35, 34, 37, 36};
+int relayPin[RELAYS_MAX + 1] = {0, 23, 22, 25, 24, 27, 26, 29, 28, 31, 30, 33, 32, 34, 35, 36, 37};
 bool relayState[RELAYS_MAX + 1];
 
 // ==================================================================
@@ -101,7 +101,7 @@ void reconnect() {
     } else {
         Serial.print("failed, rc=");
         Serial.print(client.lastError());
-        delay(1000);
+        delay(2000);
     }
 
     Serial.println();
@@ -127,6 +127,7 @@ void setupEthernet() {
 
 void setup() {
     Serial.begin(9600);
+    delay(3000);
     setupRelays();
     setupEthernet();
     setupMQTT();
@@ -134,7 +135,6 @@ void setup() {
 }
 
 void loop() {  
-  client.loop();
-  delay(10);
-  if (!client.connected()) reconnect();
+    client.loop();
+    if (!client.connected()) reconnect();    
 }
